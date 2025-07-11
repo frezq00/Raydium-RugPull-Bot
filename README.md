@@ -2,7 +2,7 @@
 # How can I rugpull in Raydium?
 
 ## Contact
-telegram: [Takhi](https://t.me/@takhi_77)
+telegram: [Solove](https://t.me/@Solove_77)
 
 You can contact me here if you have any problems with this repo.
 This repo is eliminated some valuable part like runnning trading bot part.
@@ -24,7 +24,7 @@ I hope this can be helpful for you and can help you with my good experience in d
 ## Usage
 1. Clone the repository
 ```
-git clone https://github.com/PioSol7/Raydium_Rugpull_Trading_Bot
+git clone https://github.com/Solove-77/Raydium_Rugpull_Trading_Bot
 cd Raydium_Rugpull_Trading_Bot
 ```
 2. Install dependencies

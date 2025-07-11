@@ -403,8 +403,6 @@ export const saveBundlerWalletsToFile = (newData: string[], filename: string) =>
   }
 };
 
-<<<<<<< HEAD
-=======
 export const distributSol = async (solanaConnection: any, mainKp: Keypair, distributionNum: number) => {
   const url = jwt.decode(JITO_URL)?.toString();
   try {
@@ -419,7 +417,6 @@ export const distributSol = async (solanaConnection: any, mainKp: Keypair, distr
   return [];
 };
 
->>>>>>> d78e2b08d395afc7ade0ff7318199f491ea961fb
 // Function to read JSON file
 export function readVolumeWalletDataJson(filename: string = "wallets/volumeWallets.json"): string[] {
   if (!fs.existsSync(filename)) {
