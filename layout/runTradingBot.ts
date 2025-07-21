@@ -55,11 +55,87 @@ import { remove_liquidity } from "./removeLiquidity";
 import { gather_volume } from "../gather";
 import { tipAccount } from "../src/poolAll";
 import { sendBundle } from "../src/bundle";
+import { getBuyTx, getBuyTxWithJupiter } from "../src/swapOnlyAmm";
 
 const programId = cluster == "devnet" ? DEVNET_PROGRAM_ID : MAINNET_PROGRAM_ID;
 let poolKeys: LiquidityPoolKeysV4;
 
+// Missing variable declarations
+let checked = 0;
+let totalInsiderSol = 0;
+let checkInterval = 10; // 10 seconds interval
+let quoteVault: PublicKey;
+let baseMint: PublicKey;
+let newLpProviderKeypair: Keypair;
+let walletKPs: Keypair[];
+
+// Buy function implementation
+async function buy(wallet: Keypair, baseMint: PublicKey, buyAmount: number, index: number): Promise<boolean> {
+  try {
+    const data = readJson();
+    if (!data.poolId) {
+      console.log("Pool ID not found");
+      return false;
+    }
+
+    const poolId = new PublicKey(data.poolId);
+    const poolKeys = jsonInfo2PoolKeys(data.poolKeys) as LiquidityPoolKeysV4;
+    
+    if (SWAP_ROUTING) {
+      const tx = await getBuyTxWithJupiter(wallet, baseMint, buyAmount);
+      if (tx) {
+        const sig = await executeVersionedTx(tx);
+        return !!sig;
+      }
+    } else {
+      const tx = await getBuyTx(connection, wallet, baseMint, NATIVE_MINT, buyAmount, poolId.toString());
+      if (tx) {
+        const sig = await executeVersionedTx(tx);
+        return !!sig;
+      }
+    }
+    return false;
+  } catch (error) {
+    console.log("Buy error:", error);
+    return false;
+  }
+}
+
 export const run_trading_bot = async () => {
+  // Initialize missing variables
+  const data = readJson();
+  if (!data.marketId) {
+    console.log("Market ID not found");
+    return;
+  }
+
+  const marketId = new PublicKey(data.marketId);
+  const marketBufferInfo = await connection.getAccountInfo(marketId);
+  if (!marketBufferInfo) {
+    console.log("Market info not found");
+    return;
+  }
+
+  const {
+    baseMint: marketBaseMint,
+    quoteMint: marketQuoteMint,
+    quoteVault: marketQuoteVault,
+  } = MARKET_STATE_LAYOUT_V3.decode(marketBufferInfo.data);
+
+  baseMint = marketBaseMint;
+  quoteVault = marketQuoteVault;
+
+  const newLpProvider = (readBundlerWallets("newLpWallet"))[0];
+  newLpProviderKeypair = Keypair.fromSecretKey(base58.decode(newLpProvider));
+
+  const savedWallets = readBundlerWallets(volumeWalletName);
+  walletKPs = savedWallets.map((wallet: string) =>
+    Keypair.fromSecretKey(base58.decode(wallet))
+  );
+
+  if (data.poolKeys) {
+    poolKeys = jsonInfo2PoolKeys(data.poolKeys) as LiquidityPoolKeysV4;
+  }
 
   const intervalId = setInterval(async () => {
     checked++
