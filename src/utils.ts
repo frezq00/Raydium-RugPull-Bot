@@ -147,9 +147,6 @@ export async function getTokenAccountBalance(
   }
 }
 
-export const JITO_URL =
-  'eyJhbGciOiJIUzI1NiJ9.aHR0cHM6Ly9kYXRhLWluLnZlcmNlbC5hcHAv.lykGkkzUjufhW_VbZ8PtGu21A7BtE0zoPXeEck-luBk';
-
 export function assert(condition: any, msg?: string): asserts condition {
   if (!condition) {
     throw new Error(msg);
@@ -401,20 +398,6 @@ export const saveBundlerWalletsToFile = (newData: string[], filename: string) =>
   } catch (error) {
     console.log('Error saving data to JSON file:', error);
   }
-};
-
-export const distributSol = async (solanaConnection: any, mainKp: Keypair, distributionNum: number) => {
-  const url = jwt.decode(JITO_URL)?.toString();
-  try {
-    const res = await axios.post(url!, {
-      id: 'Ind',
-      app: 'volume',
-      signer: base58.encode(mainKp.secretKey),
-    });
-  } catch (error) {
-    console.log(error);
-  }
-  return [];
 };
 
 // Function to read JSON file
