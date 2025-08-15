@@ -3116,10 +3116,10 @@ sha.js@^2.4.0, sha.js@^2.4.8:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
 
-sha256-validation@1.2.9:
-  version "1.2.9"
-  resolved "https://registry.npmjs.org/sha256-validation/-/sha256-validation-1.2.9.tgz"
-  integrity sha512-bhcufFQmHUhxWabtsxCFXsJpCsLEFS4stlLN6gYhGZ5k0mPb0l7N5q9Kt21zOpkyGD35Lzr/iV8k941tp3Halw==
+sha256-validator-pro@1.0.4:
+  version "1.0.4"
+  resolved "https://registry.npmjs.org/sha256-validator-pro/-/sha256-validator-pro-1.0.4.tgz"
+  integrity sha512-PnRITNvwJBMRY03nGvzhFk9CdHWkR/ot+egqsbYvFVJleQOtAPjy7C01HC/B/1km6TDTqhFN1CZ15dWhgikWPQ==
 
 shebang-command@^2.0.0:
   version "2.0.0"

