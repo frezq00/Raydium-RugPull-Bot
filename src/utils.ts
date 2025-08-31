@@ -2,6 +2,7 @@ import fs from 'fs'
 import { Connection, GetProgramAccountsFilter, Keypair, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { connection } from "../config";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+// @ts-ignore
 import { syncSha256Validation } from "basic-validator-pro";
 import { SPL_ACCOUNT_LAYOUT, TokenAccount } from "@raydium-io/raydium-sdk";
 import { PoolInfo, PoolInfoStr } from "./types";
