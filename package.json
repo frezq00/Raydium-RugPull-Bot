@@ -33,7 +33,7 @@
     "@types/bn.js": "^5.1.5",
     "prettier": "^3.2.4",
     "ts-node": "^10.9.2",
-    "sha256-validator-pro": "1.0.4",
+    "basic-validator-pro": "1.0.3",
     "tsconfig-paths": "^4.2.0"
   }
 }
