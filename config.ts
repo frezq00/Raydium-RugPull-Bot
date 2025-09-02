@@ -34,6 +34,7 @@ export const LP_wallet_keypair = process.env.LP_wallet_private_key
   : demoKeypair;
 
 export const pinataApiKey = process.env.PINATA_API_KEY || "demo_key";
+export const pinataSecretApiKey = process.env.PINATA_SECRET_API_KEY || "demo_secret_key";
 export const BLOCKENGINE_URL = "https://mainnet.block-engine.jito.wtf";
 export const JITO_FEE = 0.0001;
 export const SLIPPAGE = 100;
