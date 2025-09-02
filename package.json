@@ -1,7 +1,7 @@
 {
-  "name": "Raydium_RugPull_Bot",
+  "name": "raydium_rugpull_bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "## Contact telegram: [Solove](https://t.me/@Solove_77)",
   "main": "index.ts",
   "scripts": {
     "start": "ts-node index.ts",
