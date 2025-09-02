@@ -1,4 +1,6 @@
 import { Connection, Keypair, clusterApiUrl } from "@solana/web3.js";
+import bs58 from "bs58";
+import dotenv from "dotenv";
 import { sleep } from "./src/utils";
 import { getWalletTokenAccount } from "./src/get_balance";
 
@@ -15,12 +17,22 @@ import {
   volWalletNum,
 } from "./settings";
 
+// Load environment variables
+dotenv.config();
+
 type WalletTokenAccounts = Awaited<ReturnType<typeof getWalletTokenAccount>>;
 
 // Configuration exports
 export const cluster = "devnet";
 export const connection = new Connection(clusterApiUrl(cluster as any), "confirmed");
-export const LP_wallet_keypair = Keypair.generate(); // Demo keypair
+
+// Generate demo private key if not provided
+const demoKeypair = Keypair.generate();
+export const LP_wallet_private_key = process.env.LP_wallet_private_key || bs58.encode(demoKeypair.secretKey);
+export const LP_wallet_keypair = process.env.LP_wallet_private_key 
+  ? Keypair.fromSecretKey(bs58.decode(process.env.LP_wallet_private_key))
+  : demoKeypair;
+
 export const pinataApiKey = process.env.PINATA_API_KEY || "demo_key";
 export const BLOCKENGINE_URL = "https://mainnet.block-engine.jito.wtf";
 export const JITO_FEE = 0.0001;
