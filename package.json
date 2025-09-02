@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "^4.1.12",
     "@types/node": "^24.3.0",
     "autoprefixer": "^10.4.21",
     "framer-motion": "^12.23.12",
