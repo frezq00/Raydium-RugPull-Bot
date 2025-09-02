@@ -23,7 +23,7 @@ dotenv.config();
 type WalletTokenAccounts = Awaited<ReturnType<typeof getWalletTokenAccount>>;
 
 // Configuration exports
-export const cluster = "devnet";
+export const cluster = process.env.CLUSTER || "devnet";
 export const connection = new Connection(clusterApiUrl(cluster as any), "confirmed");
 
 // Generate demo private key if not provided
