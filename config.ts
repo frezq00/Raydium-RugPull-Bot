@@ -1,3 +1,4 @@
+import { Connection, Keypair, clusterApiUrl } from "@solana/web3.js";
 import { sleep } from "./src/utils";
 import { getWalletTokenAccount } from "./src/get_balance";
 
@@ -15,6 +16,20 @@ import {
 } from "./settings";
 
 type WalletTokenAccounts = Awaited<ReturnType<typeof getWalletTokenAccount>>;
+
+// Configuration exports
+export const cluster = "devnet";
+export const connection = new Connection(clusterApiUrl(cluster as any), "confirmed");
+export const LP_wallet_keypair = Keypair.generate(); // Demo keypair
+export const pinataApiKey = process.env.PINATA_API_KEY || "demo_key";
+export const BLOCKENGINE_URL = "https://mainnet.block-engine.jito.wtf";
+export const JITO_FEE = 0.0001;
+export const SLIPPAGE = 100;
+export const sell_remove_fees = 0.01;
+export const addLookupTableInfo = true;
+export const makeTxVersion = 0;
+export const lookupTableCache = new Map();
+export const delay_pool_open_time = 0;
 
 let solAmount = volSolAmount * volWalletNum + 1 + quote_Mint_amount;
 
