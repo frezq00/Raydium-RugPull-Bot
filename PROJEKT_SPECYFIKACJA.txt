@@ -1,0 +1,556 @@
+SOLANA RUGPULL BOT - SZCZEGÓŁOWA SPECYFIKACJA PROJEKTU
+================================================================
+
+UWAGA PRAWNA:
+Ten projekt jest przeznaczony WYŁĄCZNIE do celów edukacyjnych i badawczych.
+Implementacja i użycie na mainnet może być nielegalne i prowadzić do strat finansowych.
+Deweloper ponosi pełną odpowiedzialność za sposób wykorzystania tego kodu.
+
+================================================================
+1. ARCHITEKTURA SYSTEMU
+================================================================
+
+FRONTEND (React + TypeScript + Vite):
+- Dashboard z kontrolą bota
+- Wizualizacja procesu rugpull w czasie rzeczywistym
+- Konfiguracja parametrów
+- Monitoring transakcji i statystyk
+- Analiza bezpieczeństwa
+
+BACKEND (Node.js + Solana Web3.js):
+- API do komunikacji z blockchainem Solana
+- Zarządzanie portfelami i kluczami prywatnymi
+- Wykonywanie transakcji
+- Monitoring puli likwidności
+
+SMART CONTRACTS (Rust + Anchor Framework):
+- Token Program (SPL Token)
+- Market Program (OpenBook DEX)
+- AMM Program (Raydium)
+
+================================================================
+2. STRUKTURA PLIKÓW PROJEKTU
+================================================================
+
+rugpull-bot/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Header.tsx
+│   │   │   ├── BotControls.tsx
+│   │   │   ├── ProcessFlow.tsx
+│   │   │   ├── WalletInfo.tsx
+│   │   │   ├── TokenInfo.tsx
+│   │   │   ├── ConfigurationPanel.tsx
+│   │   │   ├── SecurityAnalysis.tsx
+│   │   │   ├── ActivityLog.tsx
+│   │   │   ├── TradingStats.tsx
+│   │   │   ├── LiquidityChart.tsx
+│   │   │   ├── AdvancedControls.tsx
+│   │   │   └── ManualActions.tsx
+│   │   ├── hooks/
+│   │   │   └── useBotSimulation.ts
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   ├── utils/
+│   │   │   ├── solana.ts
+│   │   │   └── wallet.ts
+│   │   └── App.tsx
+│   ├── package.json
+│   └── vite.config.ts
+├── backend/
+│   ├── src/
+│   │   ├── controllers/
+│   │   │   ├── botController.ts
+│   │   │   ├── walletController.ts
+│   │   │   └── tokenController.ts
+│   │   ├── services/
+│   │   │   ├── solanaService.ts
+│   │   │   ├── tokenService.ts
+│   │   │   ├── marketService.ts
+│   │   │   ├── poolService.ts
+│   │   │   └── volumeService.ts
+│   │   ├── utils/
+│   │   │   ├── keypair.ts
+│   │   │   ├── transaction.ts
+│   │   │   └── constants.ts
+│   │   ├── types/
+│   │   │   └── index.ts
+│   │   └── server.ts
+│   └── package.json
+└── contracts/
+    ├── programs/
+    │   └── rugpull-token/
+    │       ├── src/
+    │       │   └── lib.rs
+    │       └── Cargo.toml
+    └── Anchor.toml
+
+================================================================
+3. SZCZEGÓŁOWE WYMAGANIA FUNKCJONALNE
+================================================================
+
+3.1 ZARZĄDZANIE PORTFELAMI
+--------------------------
+- Generowanie nowych par kluczy (Keypair)
+- Dystrybucja SOL do portfeli volume
+- Zbieranie SOL z portfeli po rugpull
+- Bezpieczne przechowywanie kluczy prywatnych
+- Monitoring sald portfeli
+
+IMPLEMENTACJA:
+```typescript
+interface WalletManager {
+  generateVolumeWallets(count: number): Keypair[];
+  distributeSol(wallets: Keypair[], amount: number): Promise<string[]>;
+  gatherSol(wallets: Keypair[]): Promise<number>;
+  getBalance(publicKey: PublicKey): Promise<number>;
+}
+```
+
+3.2 TWORZENIE TOKENA
+--------------------
+- Mintowanie nowego SPL tokena
+- Ustawianie metadanych (nazwa, symbol, opis, logo)
+- Konfiguracja supply i decimals
+- Revoke mint authority po utworzeniu puli
+
+IMPLEMENTACJA:
+```typescript
+interface TokenCreator {
+  createToken(
+    name: string,
+    symbol: string,
+    decimals: number,
+    supply: number,
+    metadata: TokenMetadata
+  ): Promise<{
+    mint: PublicKey;
+    tokenAccount: PublicKey;
+    signature: string;
+  }>;
+  
+  revokeAuthorities(mint: PublicKey): Promise<string>;
+}
+```
+
+3.3 TWORZENIE MARKETU OPENBOOK
+------------------------------
+- Utworzenie marketu na OpenBook DEX
+- Konfiguracja parametrów marketu
+- Ustawienie tick size i lot size
+- Generowanie market ID
+
+IMPLEMENTACJA:
+```typescript
+interface MarketCreator {
+  createMarket(
+    baseMint: PublicKey,
+    quoteMint: PublicKey,
+    lotSize: number,
+    tickSize: number
+  ): Promise<{
+    marketId: PublicKey;
+    signature: string;
+  }>;
+}
+```
+
+3.4 TWORZENIE PULI RAYDIUM
+--------------------------
+- Utworzenie puli AMM na Raydium
+- Dodanie początkowej likwidności
+- Konfiguracja parametrów puli
+- Otrzymanie LP tokenów
+
+IMPLEMENTACJA:
+```typescript
+interface PoolCreator {
+  createPool(
+    tokenMint: PublicKey,
+    marketId: PublicKey,
+    baseAmount: number,
+    quoteAmount: number
+  ): Promise<{
+    poolId: PublicKey;
+    lpMint: PublicKey;
+    signature: string;
+  }>;
+}
+```
+
+3.5 VOLUME TRADING BOT
+----------------------
+- Automatyczne kupno/sprzedaż z portfeli volume
+- Randomizacja kwot i interwałów
+- Symulacja naturalnego volume
+- Monitoring progu likwidności
+
+IMPLEMENTACJA:
+```typescript
+interface VolumeBot {
+  startTrading(config: VolumeConfig): void;
+  stopTrading(): void;
+  executeTrade(
+    wallet: Keypair,
+    action: 'buy' | 'sell',
+    amount: number
+  ): Promise<string>;
+}
+
+interface VolumeConfig {
+  wallets: Keypair[];
+  buyAmount: number;
+  sellAmount: number;
+  interval: number;
+  slippage: number;
+  liquidityThreshold: number;
+}
+```
+
+3.6 RUGPULL EXECUTION
+---------------------
+- Automatyczne wykrywanie progu likwidności
+- Usuwanie całej likwidności z puli
+- Sprzedaż wszystkich tokenów
+- Zbieranie SOL z portfeli volume
+
+IMPLEMENTACJA:
+```typescript
+interface RugpullExecutor {
+  checkLiquidityThreshold(poolId: PublicKey): Promise<boolean>;
+  removeLiquidity(poolId: PublicKey): Promise<string>;
+  sellAllTokens(wallets: Keypair[]): Promise<string[]>;
+  gatherFunds(): Promise<number>;
+}
+```
+
+================================================================
+4. KONFIGURACJA PARAMETRÓW
+================================================================
+
+4.1 USTAWIENIA BOTA
+-------------------
+```typescript
+interface BotConfig {
+  // Portfele volume
+  volSolAmount: number;        // 0.08 SOL na portfel
+  volWalletNum: number;        // 10 portfeli
+  
+  // Pula likwidności
+  quoteMintAmount: number;     // 0.2 SOL do puli
+  liquidityThreshold: number;  // 1.0 SOL próg rugpull
+  
+  // Trading
+  buyAmount: number;           // 0.01 SOL na transakcję
+  buyInterval: number;         // 3000ms między transakcjami
+  slippage: number;           // 100 (1%)
+  
+  // Token
+  tokenName: string;          // "AIHorse"
+  tokenSymbol: string;        // "AH"
+  tokenSupply: number;        // 1,000,000,000
+  tokenDecimals: number;      // 9
+}
+```
+
+4.2 METADANE TOKENA
+------------------
+```typescript
+interface TokenMetadata {
+  name: string;
+  symbol: string;
+  description: string;
+  image: string;
+  external_url?: string;
+  attributes?: Array<{
+    trait_type: string;
+    value: string;
+  }>;
+}
+```
+
+================================================================
+5. API ENDPOINTS
+================================================================
+
+5.1 BOT CONTROL
+---------------
+POST /api/bot/start
+- Uruchomienie bota
+- Body: BotConfig
+- Response: { success: boolean, message: string }
+
+POST /api/bot/stop
+- Zatrzymanie bota
+- Response: { success: boolean, message: string }
+
+GET /api/bot/status
+- Status bota
+- Response: BotStatus
+
+5.2 WALLET MANAGEMENT
+--------------------
+POST /api/wallets/generate
+- Generowanie portfeli volume
+- Body: { count: number }
+- Response: { wallets: string[], signatures: string[] }
+
+POST /api/wallets/distribute
+- Dystrybucja SOL
+- Body: { amount: number }
+- Response: { signatures: string[] }
+
+GET /api/wallets/balances
+- Salda portfeli
+- Response: { balances: number[] }
+
+5.3 TOKEN OPERATIONS
+-------------------
+POST /api/token/create
+- Tworzenie tokena
+- Body: TokenMetadata & { supply: number, decimals: number }
+- Response: { mint: string, signature: string }
+
+POST /api/token/revoke
+- Revoke authorities
+- Response: { signature: string }
+
+5.4 MARKET OPERATIONS
+--------------------
+POST /api/market/create
+- Tworzenie marketu
+- Body: { baseMint: string, quoteMint: string }
+- Response: { marketId: string, signature: string }
+
+5.5 POOL OPERATIONS
+------------------
+POST /api/pool/create
+- Tworzenie puli
+- Body: { tokenMint: string, marketId: string, baseAmount: number, quoteAmount: number }
+- Response: { poolId: string, signature: string }
+
+POST /api/pool/remove-liquidity
+- Usuwanie likwidności
+- Response: { signature: string, amount: number }
+
+5.6 TRADING
+-----------
+POST /api/trading/start
+- Uruchomienie volume trading
+- Body: VolumeConfig
+- Response: { success: boolean }
+
+POST /api/trading/stop
+- Zatrzymanie trading
+- Response: { success: boolean }
+
+GET /api/trading/stats
+- Statystyki trading
+- Response: TradingStats
+
+================================================================
+6. BEZPIECZEŃSTWO I MONITORING
+================================================================
+
+6.1 ANALIZA ZAGROŻEŃ
+--------------------
+- Wykrywanie podejrzanych bibliotek
+- Monitoring niezaszyfrowanych kluczy
+- Analiza automatycznych transferów
+- Walidacja zewnętrznych danych
+
+6.2 LOGI AKTYWNOŚCI
+------------------
+- Timestamp każdej operacji
+- Typ operacji (info, success, warning, error)
+- Szczegółowy opis akcji
+- Hash transakcji
+
+6.3 EMERGENCY STOP
+-----------------
+- Natychmiastowe zatrzymanie wszystkich operacji
+- Zabezpieczenie przed przypadkowym uruchomieniem
+- Backup kluczy prywatnych
+
+================================================================
+7. WYMAGANIA TECHNICZNE
+================================================================
+
+7.1 DEPENDENCIES
+----------------
+Frontend:
+- React 18+
+- TypeScript 5+
+- Vite 4+
+- Tailwind CSS 3+
+- Framer Motion
+- Recharts
+- Lucide React
+
+Backend:
+- Node.js 18+
+- Express.js
+- @solana/web3.js
+- @solana/spl-token
+- @project-serum/anchor
+- @raydium-io/raydium-sdk
+
+7.2 ENVIRONMENT VARIABLES
+-------------------------
+```env
+# Solana Configuration
+SOLANA_RPC_URL=https://api.devnet.solana.com
+SOLANA_NETWORK=devnet
+
+# Wallet Configuration
+MAIN_WALLET_PRIVATE_KEY=base58_encoded_key
+VOLUME_WALLETS_COUNT=10
+
+# API Configuration
+PORT=3001
+CORS_ORIGIN=http://localhost:3000
+
+# Security
+ENCRYPTION_KEY=your_encryption_key
+JWT_SECRET=your_jwt_secret
+```
+
+7.3 DEPLOYMENT
+--------------
+- Docker containerization
+- Environment separation (dev/test/prod)
+- Automated testing
+- CI/CD pipeline
+- Monitoring i alerting
+
+================================================================
+8. PROCES IMPLEMENTACJI
+================================================================
+
+FAZA 1: PODSTAWOWA INFRASTRUKTURA (1-2 tygodnie)
+- Konfiguracja projektów frontend/backend
+- Podstawowe komponenty UI
+- Połączenie z Solana RPC
+- Zarządzanie portfelami
+
+FAZA 2: CORE FUNCTIONALITY (2-3 tygodnie)
+- Tworzenie tokenów
+- Tworzenie marketów
+- Tworzenie puli likwidności
+- Podstawowy volume trading
+
+FAZA 3: ADVANCED FEATURES (1-2 tygodnie)
+- Rugpull execution
+- Monitoring i statystyki
+- Analiza bezpieczeństwa
+- Emergency controls
+
+FAZA 4: TESTING I OPTIMIZATION (1 tydzień)
+- Unit testy
+- Integration testy
+- Performance optimization
+- Security audit
+
+FAZA 5: DEPLOYMENT (1 tydzień)
+- Production deployment
+- Monitoring setup
+- Documentation
+- User training
+
+================================================================
+9. TESTOWANIE
+================================================================
+
+9.1 UNIT TESTS
+--------------
+- Testy funkcji utility
+- Testy komponentów React
+- Testy API endpoints
+- Testy smart contracts
+
+9.2 INTEGRATION TESTS
+--------------------
+- Testy end-to-end procesu
+- Testy komunikacji frontend-backend
+- Testy transakcji blockchain
+- Testy error handling
+
+9.3 MANUAL TESTING
+------------------
+- Testowanie na devnet
+- Scenariusze użytkownika
+- Performance testing
+- Security testing
+
+================================================================
+10. DOKUMENTACJA
+================================================================
+
+10.1 TECHNICAL DOCUMENTATION
+----------------------------
+- API documentation (OpenAPI/Swagger)
+- Code documentation (JSDoc/TSDoc)
+- Architecture diagrams
+- Database schemas
+
+10.2 USER DOCUMENTATION
+-----------------------
+- Installation guide
+- Configuration guide
+- User manual
+- Troubleshooting guide
+
+10.3 DEVELOPER DOCUMENTATION
+----------------------------
+- Development setup
+- Coding standards
+- Contribution guidelines
+- Release process
+
+================================================================
+11. COMPLIANCE I LEGAL
+================================================================
+
+11.1 DISCLAIMERS
+---------------
+- Educational purpose only
+- No financial advice
+- User responsibility
+- Risk warnings
+
+11.2 SECURITY MEASURES
+---------------------
+- Private key encryption
+- Secure communication
+- Access controls
+- Audit logging
+
+11.3 REGULATORY COMPLIANCE
+-------------------------
+- Local regulations check
+- Terms of service
+- Privacy policy
+- Data protection
+
+================================================================
+UWAGA KOŃCOWA:
+================================================================
+
+Ten projekt wymaga głębokiej znajomości:
+- Solana blockchain i Web3.js
+- Smart contracts w Rust/Anchor
+- DeFi protocols (DEX, AMM)
+- React/TypeScript development
+- Node.js backend development
+- Cybersecurity best practices
+
+Przed implementacją należy:
+1. Przeanalizować aspekty prawne
+2. Zrozumieć ryzyko finansowe
+3. Przetestować na devnet
+4. Skonsultować z ekspertami bezpieczeństwa
+5. Przygotować plan awaryjny
+
+PAMIĘTAJ: Ten kod może być używany do nielegalnych działań.
+Deweloper ponosi pełną odpowiedzialność za jego wykorzystanie.
