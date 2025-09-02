@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solana Rugpull Bot - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #7c3aed 50%, #db2777 100%);
+        }
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+        .status-active { background-color: #10b981; }
+        .status-pending { background-color: #f59e0b; }
+        .status-error { background-color: #ef4444; }
+        .progress-bar {
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-robot text-3xl text-white"></i>
+                    <h1 class="text-2xl font-bold">Solana Rugpull Bot</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <span class="status-dot status-active"></span>
+                        <span class="text-sm">DEVNET</span>
+                    </div>
+                    <button id="emergencyStop" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                        <i class="fas fa-stop mr-2"></i>Emergency Stop
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-8">
+        <!-- Warning Banner -->
+        <div class="bg-red-900 border border-red-700 rounded-lg p-4 mb-8">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-red-400 text-xl mr-3"></i>
+                <div>
+                    <h3 class="font-bold text-red-300">OSTRZEŻENIE BEZPIECZEŃSTWA</h3>
+                    <p class="text-red-200 text-sm">Ten bot jest przeznaczony wyłącznie do celów edukacyjnych. Używanie na mainnet może prowadzić do strat finansowych.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- Bot Status -->
+            <div class="bg-gray-800 rounded-xl p-6 card-hover">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Status Bota</h3>
+                    <div id="botStatus" class="flex items-center">
+                        <span class="status-dot status-pending"></span>
+                        <span class="text-sm">Gotowy</span>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <button id="startBot" class="w-full bg-green-600 hover:bg-green-700 py-3 rounded-lg font-medium transition-colors">
+                        <i class="fas fa-play mr-2"></i>Uruchom Bota
+                    </button>
+                    <button id="stopBot" class="w-full bg-red-600 hover:bg-red-700 py-3 rounded-lg font-medium transition-colors" disabled>
+                        <i class="fas fa-stop mr-2"></i>Zatrzymaj Bota
+                    </button>
+                </div>
+            </div>
+
+            <!-- Wallet Info -->
+            <div class="bg-gray-800 rounded-xl p-6 card-hover">
+                <h3 class="text-lg font-semibold mb-4">Portfel Główny</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Saldo SOL:</span>
+                        <span id="solBalance" class="font-mono">0.0000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Portfele Volume:</span>
+                        <span id="volumeWallets" class="font-mono">10</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Adres:</span>
+                        <span id="walletAddress" class="font-mono text-xs text-blue-400">Demo Wallet</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Token -->
+            <div class="bg-gray-800 rounded-xl p-6 card-hover">
+                <h3 class="text-lg font-semibold mb-4">Aktualny Token</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Symbol:</span>
+                        <span id="tokenSymbol" class="font-mono">AH</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Nazwa:</span>
+                        <span id="tokenName" class="font-mono">AIHorse</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Supply:</span>
+                        <span id="tokenSupply" class="font-mono">1,000,000,000</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Process Flow -->
+        <div class="bg-gray-800 rounded-xl p-6 mb-8">
+            <h3 class="text-xl font-semibold mb-6">Proces Rugpull</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div id="step1" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-coins text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Dystrybucja SOL</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="step2" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-plus-circle text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Tworzenie Tokena</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="step3" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-store text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Tworzenie Marketu</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="step4" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-shield-alt text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Revoke Authority</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="step5" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-swimming-pool text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Tworzenie Puli</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="step6" class="process-step bg-gray-700 p-4 rounded-lg text-center">
+                    <i class="fas fa-chart-line text-2xl mb-2 text-gray-400"></i>
+                    <h4 class="font-medium text-sm">Volume Trading</h4>
+                    <div class="mt-2 h-2 bg-gray-600 rounded-full">
+                        <div class="h-full bg-blue-500 rounded-full progress-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column -->
+            <div class="space-y-6">
+                <!-- Configuration Panel -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Konfiguracja</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Ilość SOL na portfel volume</label>
+                            <input type="number" id="volSolAmount" value="0.08" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Liczba portfeli volume</label>
+                            <input type="number" id="volWalletNum" value="10" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">SOL do puli likwidności</label>
+                            <input type="number" id="quoteMintAmount" value="0.2" step="0.01" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Próg likwidności (SOL)</label>
+                            <input type="number" id="liquidityThreshold" value="1" step="0.1" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Analysis -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4 text-red-400">
+                        <i class="fas fa-shield-alt mr-2"></i>Analiza Bezpieczeństwa
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-red-900 rounded-lg">
+                            <span class="text-sm">Podejrzana biblioteka: basic-validator-pro</span>
+                            <i class="fas fa-exclamation-triangle text-red-400"></i>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-red-900 rounded-lg">
+                            <span class="text-sm">Niezaszyfrowane klucze prywatne</span>
+                            <i class="fas fa-key text-red-400"></i>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-yellow-900 rounded-lg">
+                            <span class="text-sm">Automatyczne transfery środków</span>
+                            <i class="fas fa-exchange-alt text-yellow-400"></i>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-yellow-900 rounded-lg">
+                            <span class="text-sm">Brak walidacji zewnętrznych danych</span>
+                            <i class="fas fa-database text-yellow-400"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="space-y-6">
+                <!-- Live Activity -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Aktywność na Żywo</h3>
+                    <div id="activityLog" class="space-y-2 max-h-64 overflow-y-auto">
+                        <div class="text-sm text-gray-400 p-2 bg-gray-700 rounded">
+                            <span class="text-blue-400">[DEMO]</span> Bot gotowy do uruchomienia...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Statystyki</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-green-400" id="totalProfit">0.00</div>
+                            <div class="text-sm text-gray-400">Zysk (SOL)</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-blue-400" id="totalTrades">0</div>
+                            <div class="text-sm text-gray-400">Transakcje</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-purple-400" id="activeWallets">0</div>
+                            <div class="text-sm text-gray-400">Aktywne Portfele</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-yellow-400" id="poolLiquidity">0.00</div>
+                            <div class="text-sm text-gray-400">Likwidność (SOL)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Token Info -->
+                <div class="bg-gray-800 rounded-xl p-6">
+                    <h3 class="text-xl font-semibold mb-4">Informacje o Tokenie</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Nazwa:</span>
+                            <span class="font-mono">AIHorse</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Symbol:</span>
+                            <span class="font-mono">AH</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Decimals:</span>
+                            <span class="font-mono">9</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Supply:</span>
+                            <span class="font-mono">1,000,000,000</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Market ID:</span>
+                            <span class="font-mono text-xs text-blue-400" id="marketId">Nie utworzono</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Pool ID:</span>
+                            <span class="font-mono text-xs text-blue-400" id="poolId">Nie utworzono</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Controls -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <button id="distributeBtn" class="bg-blue-600 hover:bg-blue-700 p-4 rounded-lg transition-colors card-hover">
+                <i class="fas fa-share-alt text-xl mb-2"></i>
+                <div class="font-medium">Dystrybuuj SOL</div>
+                <div class="text-xs text-gray-300">Do portfeli volume</div>
+            </button>
+            <button id="createTokenBtn" class="bg-purple-600 hover:bg-purple-700 p-4 rounded-lg transition-colors card-hover">
+                <i class="fas fa-coins text-xl mb-2"></i>
+                <div class="font-medium">Utwórz Token</div>
+                <div class="text-xs text-gray-300">Z metadanymi</div>
+            </button>
+            <button id="createMarketBtn" class="bg-indigo-600 hover:bg-indigo-700 p-4 rounded-lg transition-colors card-hover">
+                <i class="fas fa-store text-xl mb-2"></i>
+                <div class="font-medium">Utwórz Market</div>
+                <div class="text-xs text-gray-300">OpenBook DEX</div>
+            </button>
+            <button id="createPoolBtn" class="bg-green-600 hover:bg-green-700 p-4 rounded-lg transition-colors card-hover">
+                <i class="fas fa-swimming-pool text-xl mb-2"></i>
+                <div class="font-medium">Utwórz Pulę</div>
+                <div class="text-xs text-gray-300">Raydium AMM</div>
+            </button>
+        </div>
+
+        <!-- Manual Actions -->
+        <div class="bg-gray-800 rounded-xl p-6 mb-8">
+            <h3 class="text-xl font-semibold mb-4 text-orange-400">Akcje Manualne</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button id="sellAllBtn" class="bg-red-600 hover:bg-red-700 p-4 rounded-lg transition-colors">
+                    <i class="fas fa-hand-holding-usd text-xl mb-2"></i>
+                    <div class="font-medium">Sprzedaj Wszystko</div>
+                    <div class="text-xs text-gray-300">Manual sell all tokens</div>
+                </button>
+                <button id="removeLiquidityBtn" class="bg-orange-600 hover:bg-orange-700 p-4 rounded-lg transition-colors">
+                    <i class="fas fa-minus-circle text-xl mb-2"></i>
+                    <div class="font-medium">Usuń Likwidność</div>
+                    <div class="text-xs text-gray-300">Remove LP tokens</div>
+                </button>
+                <button id="gatherSolBtn" class="bg-yellow-600 hover:bg-yellow-700 p-4 rounded-lg transition-colors">
+                    <i class="fas fa-piggy-bank text-xl mb-2"></i>
+                    <div class="font-medium">Zbierz SOL</div>
+                    <div class="text-xs text-gray-300">Gather from volume wallets</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="bg-gray-800 rounded-xl p-6">
+            <h3 class="text-xl font-semibold mb-4">Wykres Likwidności</h3>
+            <div class="h-64">
+                <canvas id="liquidityChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let botRunning = false;
+        let currentStep = 0;
+        let liquidityData = [];
+        let chart;
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('liquidityChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Likwidność (SOL)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: '#374151' }
+                        },
+                        y: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: '#374151' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add log entry
+        function addLog(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {
+                info: 'text-blue-400',
+                success: 'text-green-400',
+                warning: 'text-yellow-400',
+                error: 'text-red-400'
+            };
+            
+            const entry = document.createElement('div');
+            entry.className = 'text-sm p-2 bg-gray-700 rounded';
+            entry.innerHTML = `<span class="${colors[type]}">[${timestamp}]</span> ${message}`;
+            
+            log.insertBefore(entry, log.firstChild);
+            if (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Update progress
+        function updateProgress(stepIndex, progress) {
+            const step = document.getElementById(`step${stepIndex + 1}`);
+            const progressBar = step.querySelector('.progress-bar');
+            const icon = step.querySelector('i');
+            
+            progressBar.style.width = `${progress}%`;
+            
+            if (progress === 100) {
+                step.classList.remove('bg-gray-700');
+                step.classList.add('bg-green-700');
+                icon.classList.remove('text-gray-400');
+                icon.classList.add('text-green-300');
+            } else if (progress > 0) {
+                step.classList.remove('bg-gray-700');
+                step.classList.add('bg-blue-700');
+                icon.classList.remove('text-gray-400');
+                icon.classList.add('text-blue-300');
+            }
+        }
+
+        // Simulate bot process
+        async function simulateBotProcess() {
+            const steps = [
+                { name: 'Dystrybucja SOL', duration: 3000 },
+                { name: 'Tworzenie tokena AIHorse (AH)', duration: 4000 },
+                { name: 'Tworzenie marketu OpenBook', duration: 5000 },
+                { name: 'Revoke mint/freeze authority', duration: 2000 },
+                { name: 'Tworzenie puli Raydium', duration: 6000 },
+                { name: 'Uruchamianie volume trading', duration: 2000 }
+            ];
+
+            for (let i = 0; i < steps.length; i++) {
+                addLog(`Rozpoczęcie: ${steps[i].name}`, 'info');
+                
+                // Simulate progress
+                for (let progress = 0; progress <= 100; progress += 10) {
+                    updateProgress(i, progress);
+                    await new Promise(resolve => setTimeout(resolve, steps[i].duration / 10));
+                }
+                
+                addLog(`Zakończono: ${steps[i].name}`, 'success');
+                
+                // Update UI based on step
+                if (i === 1) {
+                    document.getElementById('marketId').textContent = 'Demo123...ABC';
+                }
+                if (i === 4) {
+                    document.getElementById('poolId').textContent = 'Pool456...DEF';
+                }
+            }
+
+            // Start volume simulation
+            startVolumeSimulation();
+        }
+
+        // Simulate volume trading
+        function startVolumeSimulation() {
+            let trades = 0;
+            let liquidity = 0.2;
+            let profit = 0;
+
+            const interval = setInterval(() => {
+                if (!botRunning) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                // Simulate random trading activity
+                const tradeAmount = (Math.random() * 0.01 + 0.001).toFixed(4);
+                const isProfit = Math.random() > 0.3;
+                
+                trades++;
+                if (isProfit) {
+                    profit += parseFloat(tradeAmount) * 0.1;
+                    liquidity += parseFloat(tradeAmount);
+                } else {
+                    liquidity -= parseFloat(tradeAmount) * 0.5;
+                }
+
+                // Update stats
+                document.getElementById('totalTrades').textContent = trades;
+                document.getElementById('totalProfit').textContent = profit.toFixed(4);
+                document.getElementById('poolLiquidity').textContent = liquidity.toFixed(4);
+                document.getElementById('activeWallets').textContent = Math.floor(Math.random() * 10) + 1;
+
+                // Add to chart
+                const now = new Date().toLocaleTimeString();
+                chart.data.labels.push(now);
+                chart.data.datasets[0].data.push(liquidity);
+                
+                if (chart.data.labels.length > 20) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+                chart.update('none');
+
+                // Add log
+                const action = isProfit ? 'Kupno' : 'Sprzedaż';
+                const color = isProfit ? 'success' : 'warning';
+                addLog(`${action}: ${tradeAmount} SOL | Portfel ${Math.floor(Math.random() * 10) + 1}`, color);
+
+                // Check liquidity threshold
+                const threshold = parseFloat(document.getElementById('liquidityThreshold').value);
+                if (liquidity > threshold + 0.2) {
+                    addLog(`Próg likwidności przekroczony! Rozpoczęcie rugpull...`, 'error');
+                    setTimeout(() => {
+                        executeRugpull();
+                    }, 2000);
+                    clearInterval(interval);
+                }
+            }, 1000 + Math.random() * 2000);
+        }
+
+        // Execute rugpull simulation
+        function executeRugpull() {
+            addLog('🚨 RUGPULL WYKONANY! Usuwanie likwidności...', 'error');
+            
+            setTimeout(() => {
+                addLog('Likwidność usunięta. Zbieranie SOL z portfeli volume...', 'warning');
+                document.getElementById('poolLiquidity').textContent = '0.00';
+                
+                setTimeout(() => {
+                    const finalProfit = (Math.random() * 5 + 2).toFixed(4);
+                    document.getElementById('totalProfit').textContent = finalProfit;
+                    addLog(`✅ Rugpull zakończony. Zysk: ${finalProfit} SOL`, 'success');
+                    
+                    // Stop bot
+                    stopBot();
+                }, 3000);
+            }, 2000);
+        }
+
+        // Bot controls
+        function startBot() {
+            if (botRunning) return;
+            
+            botRunning = true;
+            document.getElementById('startBot').disabled = true;
+            document.getElementById('stopBot').disabled = false;
+            document.getElementById('botStatus').innerHTML = '<span class="status-dot status-active"></span><span class="text-sm">Aktywny</span>';
+            
+            addLog('🚀 Bot uruchomiony w trybie DEMO', 'success');
+            simulateBotProcess();
+        }
+
+        function stopBot() {
+            botRunning = false;
+            document.getElementById('startBot').disabled = false;
+            document.getElementById('stopBot').disabled = true;
+            document.getElementById('botStatus').innerHTML = '<span class="status-dot status-error"></span><span class="text-sm">Zatrzymany</span>';
+            
+            addLog('⏹️ Bot zatrzymany', 'warning');
+        }
+
+        // Manual actions
+        function distributeSOL() {
+            if (botRunning) return;
+            addLog('Dystrybuowanie SOL do portfeli volume...', 'info');
+            updateProgress(0, 100);
+            setTimeout(() => addLog('SOL dystrybuowany pomyślnie', 'success'), 2000);
+        }
+
+        function createToken() {
+            if (botRunning) return;
+            addLog('Tworzenie tokena AIHorse...', 'info');
+            updateProgress(1, 100);
+            setTimeout(() => {
+                addLog('Token AIHorse utworzony pomyślnie', 'success');
+                document.getElementById('marketId').textContent = 'Demo123...ABC';
+            }, 3000);
+        }
+
+        function createMarket() {
+            if (botRunning) return;
+            addLog('Tworzenie marketu OpenBook...', 'info');
+            updateProgress(2, 100);
+            setTimeout(() => addLog('Market utworzony pomyślnie', 'success'), 4000);
+        }
+
+        function createPool() {
+            if (botRunning) return;
+            addLog('Tworzenie puli Raydium...', 'info');
+            updateProgress(4, 100);
+            setTimeout(() => {
+                addLog('Pula utworzona pomyślnie', 'success');
+                document.getElementById('poolId').textContent = 'Pool456...DEF';
+            }, 5000);
+        }
+
+        function sellAll() {
+            addLog('Sprzedawanie wszystkich tokenów z portfeli volume...', 'warning');
+            setTimeout(() => addLog('Wszystkie tokeny sprzedane', 'success'), 3000);
+        }
+
+        function removeLiquidity() {
+            addLog('Usuwanie likwidności z puli...', 'error');
+            setTimeout(() => {
+                addLog('Likwidność usunięta - RUGPULL WYKONANY!', 'error');
+                document.getElementById('poolLiquidity').textContent = '0.00';
+            }, 2000);
+        }
+
+        function gatherSOL() {
+            addLog('Zbieranie SOL z portfeli volume...', 'info');
+            setTimeout(() => addLog('SOL zebrane do portfela głównego', 'success'), 2000);
+        }
+
+        // Event listeners
+        document.getElementById('startBot').addEventListener('click', startBot);
+        document.getElementById('stopBot').addEventListener('click', stopBot);
+        document.getElementById('emergencyStop').addEventListener('click', stopBot);
+        
+        document.getElementById('distributeBtn').addEventListener('click', distributeSOL);
+        document.getElementById('createTokenBtn').addEventListener('click', createToken);
+        document.getElementById('createMarketBtn').addEventListener('click', createMarket);
+        document.getElementById('createPoolBtn').addEventListener('click', createPool);
+        
+        document.getElementById('sellAllBtn').addEventListener('click', sellAll);
+        document.getElementById('removeLiquidityBtn').addEventListener('click', removeLiquidity);
+        document.getElementById('gatherSolBtn').addEventListener('click', gatherSOL);
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            
+            // Simulate initial balance
+            document.getElementById('solBalance').textContent = '10.5432';
+            document.getElementById('walletAddress').textContent = 'Demo...Wallet';
+            
+            addLog('Dashboard załadowany. Gotowy do demonstracji.', 'info');
+            addLog('⚠️ TRYB DEMO - Żadne prawdziwe transakcje nie będą wykonane', 'warning');
+        });
+
+        // Update configuration values
+        document.getElementById('volSolAmount').addEventListener('change', (e) => {
+            addLog(`Zmieniono ilość SOL na portfel: ${e.target.value}`, 'info');
+        });
+
+        document.getElementById('volWalletNum').addEventListener('change', (e) => {
+            addLog(`Zmieniono liczbę portfeli volume: ${e.target.value}`, 'info');
+        });
+
+        document.getElementById('quoteMintAmount').addEventListener('change', (e) => {
+            addLog(`Zmieniono SOL do puli: ${e.target.value}`, 'info');
+        });
+
+        document.getElementById('liquidityThreshold').addEventListener('change', (e) => {
+            addLog(`Zmieniono próg likwidności: ${e.target.value} SOL`, 'info');
+        });
+    </script>
+</body>
+</html>
